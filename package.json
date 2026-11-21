@@ -1,0 +1,27 @@
+{
+  "name": "skills",
+  "private": true,
+  "description": "Authored agent skills and their tooling.",
+  "type": "module",
+  "scripts": {
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm check:text && pnpm check:skills && pnpm test",
+    "typecheck": "tsc --noEmit && pnpm -r --if-present typecheck",
+    "lint": "oxlint",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "check:text": "node scripts/check-text.ts",
+    "check:skills": "sh scripts/install-skills --check",
+    "test": "node --test 'scripts/**/*.test.ts' && sh scripts/install-skills.test.sh && pnpm -r --if-present test",
+    "skills:install": "sh scripts/install-skills"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "oxfmt": "0.79.0",
+    "oxlint": "1.94.0",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "node": ">=26.13.1"
+  },
+  "packageManager": "pnpm@12.21.0"
+}

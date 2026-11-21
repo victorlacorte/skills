@@ -1,0 +1,106 @@
+#!/bin/sh
+# Validates the skills under packages/ and links each one into the user skill
+# roots: ~/.agents/skills (Codex, Cursor) and ~/.claude/skills (Claude Code).
+#
+# Usage: install-skills [--check]
+#   --check  validate only; link nothing.
+#
+# A skill is a directory under packages/ that contains SKILL.md. Its name is
+# the directory name. Validation (see AGENTS.md) fails before anything is linked
+# when a skill:
+#   - has a name that breaks the Agent Skills rules (1-64 characters of a-z,
+#     0-9 and single inner hyphens) or differs from the frontmatter name;
+#   - shares its name with another skill;
+#   - contains package.json, node_modules, or another SKILL.md, since the whole
+#     directory is installed.
+#
+# Each skill is linked as a whole directory. Cursor CLI's slash menu skips a
+# SKILL.md that is itself a symlink, so per-file links do not work. An existing
+# symlink with a skill's name is replaced, so links from an earlier checkout or
+# layout move here. A real file or directory with that name is never touched.
+# Links into this checkout whose target no longer exists are removed.
+
+set -eu
+
+repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd) || exit 1
+case $repo_root in
+  *[[:space:]]*) printf 'checkout path must not contain whitespace: %s\n' "$repo_root" >&2; exit 1 ;;
+esac
+check_only=false
+case ${1-} in
+  '') ;;
+  --check) check_only=true ;;
+  *) printf 'usage: install-skills [--check]\n' >&2; exit 2 ;;
+esac
+
+skill_list=$(find "$repo_root/packages" -name node_modules -prune -o -type f -name SKILL.md -print | sort)
+[ -n "$skill_list" ] || { printf 'no skills found under %s/packages\n' "$repo_root" >&2; exit 1; }
+
+problems=0
+problem() {
+  printf '%s\n' "$*" >&2
+  problems=$((problems + 1))
+}
+
+# frontmatter_name <SKILL.md>: prints the name field of the leading --- block.
+frontmatter_name() {
+  awk 'NR == 1 && $0 != "---" { exit }
+    NR > 1 && $0 == "---" { exit }
+    NR > 1 && /^name:/ { sub(/^name:[ \t]*/, ""); gsub(/^["\047]|["\047]$/, ""); print; exit }' "$1"
+}
+
+names=
+for skill_md in $skill_list; do
+  dir=$(dirname -- "$skill_md")
+  rel=${dir#"$repo_root"/}
+  name=$(basename -- "$dir")
+  if [ "${#name}" -gt 64 ] || ! printf '%s\n' "$name" | grep -Eqx '[a-z0-9]+(-[a-z0-9]+)*'; then
+    problem "$rel: name '$name' must be 1-64 characters of a-z, 0-9 and single inner hyphens"
+  fi
+  declared=$(frontmatter_name "$skill_md")
+  [ "$declared" = "$name" ] || problem "$rel: frontmatter name '$declared' must match the directory name '$name'"
+  case " $names " in
+    *" $name "*) problem "$rel: another skill is also named '$name'" ;;
+  esac
+  names="$names $name"
+  extra=$(find "$dir" -mindepth 1 \( -name package.json -o -name node_modules -o -name SKILL.md \) -print | sed "s#^$dir/##")
+  for item in $extra; do
+    [ "$item" = SKILL.md ] && continue
+    problem "$rel: contains $item; keep package files and other skills outside skill directories"
+  done
+done
+
+if [ "$problems" -gt 0 ]; then
+  printf '%s problem(s); nothing linked\n' "$problems" >&2
+  exit 1
+fi
+$check_only && exit 0
+
+status=0
+for root in "$HOME/.agents/skills" "$HOME/.claude/skills"; do
+  mkdir -p "$root"
+
+  for link in "$root"/*; do
+    [ -L "$link" ] || continue
+    case $(readlink "$link") in
+      "$repo_root"/*) [ -e "$link" ] || { rm "$link"; printf 'removed stale %s\n' "$link"; } ;;
+    esac
+  done
+
+  for skill_md in $skill_list; do
+    skill=$(dirname -- "$skill_md")
+    link=$root/$(basename -- "$skill")
+    if [ -L "$link" ]; then
+      [ "$(readlink "$link")" = "$skill" ] && continue
+      rm "$link"
+    elif [ -e "$link" ]; then
+      printf 'skipped %s: exists and is not a symlink\n' "$link" >&2
+      status=1
+      continue
+    fi
+    ln -s "$skill" "$link"
+    printf 'linked %s -> %s\n' "$link" "$skill"
+  done
+done
+
+exit "$status"

@@ -1,0 +1,21 @@
+{
+  "name": "@skills/orchestration",
+  "private": true,
+  "description": "The orchestrate skill's journal tooling and tests.",
+  "bin": {
+    "orchestrate-journal": "./src/cli.ts"
+  },
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --test 'test/**/*.test.ts' && sh test/journal-append.test.sh",
+    "journal:install": "install -d \"$HOME/.local/bin\" && ln -sf \"$PWD/src/cli.ts\" \"$HOME/.local/bin/orchestrate-journal\""
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "node": ">=26.13.1"
+  }
+}
