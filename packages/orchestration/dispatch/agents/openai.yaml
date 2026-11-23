@@ -1,0 +1,5 @@
+interface:
+  display_name: "Dispatch"
+  short_description: "Delegate work to workers in another harness, then review and integrate"
+policy:
+  allow_implicit_invocation: false

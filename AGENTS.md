@@ -13,8 +13,6 @@ pnpm format           # oxfmt, also formats Markdown
 pnpm skills:install   # links every skill into the user skill roots
 ```
 
-`packages/orchestration/test/journal-append.test.sh` records the skill's Git commit, so it fails in a repository with no commits.
-
 TypeScript runs directly through Node's type stripping. There is no build step, so use only erasable syntax (no enums, namespaces or parameter properties) and import with `.ts` extensions.
 
 ## Writing rules
@@ -29,12 +27,12 @@ TypeScript runs directly through Node's type stripping. There is no build step, 
 
 ```text
 packages/<skill>/             a skill with no code: the package directory is the skill
-packages/<family>/            a workspace package (package.json, src/, test/) with code for its skills
-packages/<family>/<skill>/    a skill inside a package; never holds package files
+packages/<family>/            skills that share files, optionally a workspace package (package.json, src/, test/) with their code
+packages/<family>/<skill>/    a skill inside a family; never holds package files
 scripts/                      repository tooling and its tests
 ```
 
-`packages/orchestration/` is the family of `orchestrate` (and, later, `dispatch` and their shared `core/`); its code is the `orchestrate-journal` analyzer and the tests for the skill's scripts.
+`packages/orchestration/` is the family of `orchestrate` and `dispatch`. Both are thin entry skills over `core/` (the shared workflow, worker contract, verification policy, roles, and one file per harness under `core/harnesses/`), which each reaches through its `references/core -> ../../core` link. `core/` has no `SKILL.md`, is never installed itself, and its files link only to each other: a `..` from `references/core/` resolves differently lexically and physically. A rule belongs in `core/` unless it depends on the delegation mechanism. Everything about one harness (spawn tool, dispatch value, role defaults, its subagents' capabilities, native spawning and waiting, usage logs) lives in its `core/harnesses/<harness>.md`, so adding a harness means adding that file and its link in `core/roles.md`; the `dispatch` MCP fields are harness-independent and stay in `dispatch/SKILL.md`. [core/README.md](packages/orchestration/core/README.md) lists the unverified harness facts.
 
 ## Skill directories
 
