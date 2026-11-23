@@ -3,7 +3,7 @@
 // and curly single quotes (see AGENTS.md), and personal absolute paths, since
 // this repository is public.
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { lstatSync, readFileSync } from "node:fs";
 
 export interface Problem {
   path: string;
@@ -37,6 +37,12 @@ export function findProblems(path: string, text: string): Problem[] {
   return problems;
 }
 
+// Symlinks are skipped: their targets are checked where they live, and a link to
+// a directory, such as a skill's references/core, cannot be read as text.
+export function withoutSymlinks(paths: string[]): string[] {
+  return paths.filter((path) => !lstatSync(path).isSymbolicLink());
+}
+
 function trackedFiles(): string[] {
   const output = execFileSync(
     "git",
@@ -49,7 +55,9 @@ function trackedFiles(): string[] {
 }
 
 if (import.meta.main) {
-  const problems = trackedFiles().flatMap((path) => findProblems(path, readFileSync(path, "utf8")));
+  const problems = withoutSymlinks(trackedFiles()).flatMap((path) =>
+    findProblems(path, readFileSync(path, "utf8")),
+  );
   for (const { path, line, rule } of problems) console.error(`${path}:${line}: ${rule}`);
   if (problems.length > 0) process.exit(1);
 }
