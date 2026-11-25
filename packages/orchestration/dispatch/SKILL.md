@@ -38,4 +38,4 @@ Check `state`, `failure_reason` and `observed` (a model, effort or sandbox that 
 
 ## Recovery and usage
 
-After a restart, `list` recovers job IDs by label, and `wait` with `timeout_s: 0` returns a finished job's result and `dir`. Usage and timestamps are in `<dir>/meta.json`; the worker's transcript is at its `sessionLog`. List each attempt's job ID in the final report.
+After a restart, `list` recovers job IDs by label, and `wait` with `timeout_s: 0` returns a finished job's result and `dir`. A job still running is its item's current attempt: `wait` for it instead of dispatching another. Usage and timestamps are in `<dir>/meta.json`; the worker's transcript is at its `sessionLog`. List each attempt's job ID in the final report.
